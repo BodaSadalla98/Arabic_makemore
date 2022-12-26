@@ -46263,7 +46263,7 @@ Nadhurah
 Nazmah 
 Naghiah 
 Nafathah 
-Naqlh. 
+Naqlh
 Namaiah 
 Nahzah 
 Nahl 
@@ -49929,7 +49929,6 @@ hafa
 hafeezah
 hafizah
 hafsa
-hafsa/ucha
 hafsah
 hafthah
 haifa
@@ -52790,7 +52789,7 @@ maqil
 marghoob
 marghub
 marid
-marudeen.
+marudeen
 maruf
 marwan
 marzuq
