@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from tqdm import tqdm
-with open('tiny_data.txt', 'r') as f:
+with open('data/tiny_data.txt', 'r') as f:
     data = f.read()
 
 torch.manual_seed(12345)
@@ -35,9 +35,9 @@ val_data = data_enc[n:]
 # Note that this training examples would be un-rolled into more examples
 block_size = 256
 batch_size  = 64
-eval_iterations = 200
+eval_iterations = 100
 eval_interval = 500
-total_steps = 5000
+total_steps = 10000
 
 num_heads = 6
 head_size = 64
@@ -209,37 +209,40 @@ class AraPoet(nn.Module):
             targets = targets.view(B*T)
             loss = F.cross_entropy(logits, targets)
         return logits, loss
+    
+    # def generate(self, idx, max_new_tokens):
+    #     # idx is (B, T) array of indices in the current context
+    #     for _ in range(max_new_tokens):
+    #         # crop idx to the last block_size tokens
+    #         idx_cond = idx[:, -block_size:]
+    #         # get the predictions
+    #         logits, loss = self(idx_cond)
+    #         # focus only on the last time step
+    #         logits = logits[:, -1, :] # becomes (B, C)
+    #         # apply softmax to get probabilities
+    #         probs = F.softmax(logits, dim=-1) # (B, C)
+    #         # sample from the distribution
+    #         idx_next = torch.multinomial(probs, num_samples=1) # (B, 1)
+    #         # append sampled index to the running sequence
+    #         idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
+    #     return idx
     def generate(self, context, max_no):
-        size = context.shape[1]
+
 
         context = context.to(device)
         for _ in range(max_no):
-            cur = context[:, -size:]  # B, T
-            # print('1',cur.shape)
+            size = context.shape[1]
+            # print(size)
+            cur = context[:, -block_size:]  # B, T
             logits, _ = self(cur) # B*T , C 
-            # print('2,',logits.shape)
-
-            ## This works   for any context size, we average the logits for all characters so that we can do softmax on them
-            # logits = logits.mean(1)
-
-            ### THis is the method they used in the video, they only took the logits of the last character to predict the next one
             logits = logits[:,-1,:]
-
-
-            
-            # print('3,',logits.shape)
-            props = F.softmax(logits, dim=1)# B*T , C
-            # print('soft max',props.shape)
-            # props = props.squeeze(0).view(-1, size) # B,T
-            # print('probs 1',props.shape)
+            props = F.softmax(logits, dim=-1)# B*T , C
             next_char = torch.multinomial(props, 1)  # B,1
-            # print(next_char.shape)
             context = torch.cat((context, next_char), dim =1) # B, T+1
         return context
     
 
 m = AraPoet().to(device)
-print(p.numel() for p in m.parameters())
 print(sum(p.numel() for p in m.parameters())/1e6, 'M parameters')
 
 
@@ -264,11 +267,12 @@ for step in tqdm(range(total_steps)):
     if not step % 1000:
         print(loss.item())
 
-     
+torch.save(m.state_dict(),'arapoet.pt')
+context = torch.zeros((1, 1), dtype=torch.long, device=device)
 
 with open('out.txt' ,'w') as f:
 
     for i in range(10):
-        text = gen(500)
+        text = decode(m.generate(context, 500)[0].tolist())
         f.write(text)
         f.write('\n\n--------------------------------------------------------\n\n')
